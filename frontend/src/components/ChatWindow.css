@@ -1,0 +1,38 @@
+.chat-window{
+flex:1;
+overflow-y:auto;
+padding:20px;
+background:#ececec;
+}
+
+.message{
+padding:10px;
+margin:5px;
+border-radius:6px;
+max-width:60%;
+}
+
+.user{
+background:#007bff;
+color:white;
+margin-left:auto;
+}
+
+.bot{
+background:#ddd;
+}
+
+.chat-input{
+display:flex;
+padding:10px;
+background:white;
+}
+
+.chat-input input{
+flex:1;
+padding:10px;
+}
+
+.chat-input button{
+padding:10px 20px;
+}
