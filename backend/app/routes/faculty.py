@@ -5,6 +5,8 @@ from app.models.user import User
 from app.models.academic import Mark, ClassSchedule
 from pydantic import BaseModel
 from typing import List
+from app.models.financial import Salary
+from app.models.faculty import Faculty
 
 router = APIRouter()
 
@@ -128,3 +130,22 @@ def create_quiz(data: QuizSchedCreate, db: Session = Depends(get_db), user: User
     db.add(new_doc)
     db.commit()
     return new_doc
+
+@router.get("/salary")
+def get_faculty_salary(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "faculty":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    faculty = db.query(Faculty).filter(Faculty.Email == user.Email).first()
+    if not faculty:
+        return []
+    
+    salaries = db.query(Salary).filter(Salary.FacultyId == faculty.FacultyId).all()
+    # Mock data if empty
+    if not salaries:
+        mock_salary = Salary(FacultyId=faculty.FacultyId, Month="March 2026", Amount=80000, Status="Pending")
+        db.add(mock_salary)
+        db.commit()
+        salaries = [mock_salary]
+
+    return salaries

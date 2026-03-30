@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BookOpen, Calendar, Clock, FileText, GraduationCap, Bell, X, BarChart2, TrendingUp, AlertCircle
+  BookOpen, Calendar, Clock, FileText, GraduationCap, Bell, X, BarChart2, TrendingUp, AlertCircle, CreditCard
 } from 'lucide-react';
 
 const StudentDashboard = () => {
@@ -8,6 +8,8 @@ const StudentDashboard = () => {
   const [overview, setOverview] = useState({ stats: [], schedule: [] });
 
   const [activeModal, setActiveModal] = useState(null); // 'attendance', 'cgpa', or 'assignments'
+
+  const [dues, setDues] = useState([]);
 
   const fetchOverview = async () => {
     try {
@@ -19,18 +21,43 @@ const StudentDashboard = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchOverview(); }, []);
+  const fetchDues = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/student/dues', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) setDues(await res.json());
+    } catch(err) {}
+  };
+
+  useEffect(() => { fetchOverview(); fetchDues(); }, []);
+
+  const handlePayment = async (dueId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/student/dues/${dueId}/pay`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if(res.ok) {
+        fetchDues();
+      }
+    } catch(err) {}
+  };
+
+  const pendingDuesCount = dues.filter(d => d.Status === 'Pending').length;
 
   const stats = [
     { id: 'attendance', label: "Overall Attendance", value: "85%" },
     { id: 'cgpa', label: "Current SGPA", value: "3.8" },
     { id: 'assignments', label: "Assignments Due", value: "3" },
+    { id: 'dues', label: "Fee Dues", value: pendingDuesCount.toString() },
   ];
 
   const iconsMap = {
     attendance: <Calendar className="w-6 h-6 text-blue-500" />,
     cgpa: <GraduationCap className="w-6 h-6 text-green-500" />,
-    assignments: <FileText className="w-6 h-6 text-orange-500" />
+    assignments: <FileText className="w-6 h-6 text-orange-500" />,
+    dues: <CreditCard className="w-6 h-6 text-red-500" />
   };
 
   return (
@@ -91,6 +118,41 @@ const StudentDashboard = () => {
                 <h4 style={{ margin: '0 0 4px 0', color: '#1e40af' }}>AI Engineering (Programming Assignment)</h4>
                 <div style={{ fontSize: '0.875rem', color: '#2563eb' }}>Due in 5 Days</div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'dues' && (
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="panel" style={{ width: '550px', padding: '24px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><CreditCard width={20} style={{ color: '#ef4444' }}/> Fee & Payments Info</h2>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X width={20}/></button>
+            </div>
+            <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {dues.length === 0 && <p>No dues found.</p>}
+              {dues.map(due => (
+                <div key={due.Id} style={{ border: '1px solid #e2e8f0', padding: '16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: due.Status === 'Paid' ? '#f8fafc' : '#fff' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', color: due.Status === 'Paid' ? '#64748b' : '#0f172a' }}>{due.Type}</h4>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                      Due Date: {due.DueDate || 'N/A'} &middot; Status: <strong style={{ color: due.Status === 'Paid' ? '#10b981' : '#f59e0b' }}>{due.Status}</strong>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#0f172a' }}>${due.Amount}</div>
+                    {due.Status === 'Pending' && (
+                      <button 
+                        onClick={() => handlePayment(due.Id)}
+                        style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        Pay Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

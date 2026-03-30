@@ -8,7 +8,7 @@ from typing import Optional
 from app.core.security import get_current_user, get_db
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.services.ai_engine import stream_ai
+from app.services.ai_engine import stream_ai, generate_chat_title
 
 
 router = APIRouter()
@@ -67,6 +67,27 @@ def create_conversation(
 
 
 # =========================
+# Get Messages for Conversation
+# =========================
+
+@router.get("/conversations/{conversation_id}/messages")
+def get_conversation_messages(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+
+    messages = (
+        db.query(Message)
+        .filter(Message.ConversationId == conversation_id)
+        .order_by(Message.CreatedAt)
+        .all()
+    )
+
+    return [{"sender": msg.Sender, "text": msg.Content} for msg in messages]
+
+
+# =========================
 # Send Message
 # =========================
 
@@ -115,6 +136,14 @@ async def send_message(
     )
 
     db.add(user_msg)
+    
+    # Update conversation title if it's currently "New Chat"
+    conversation = db.query(Conversation).filter(Conversation.ConversationId == conversation_id).first()
+    if conversation and conversation.Title == "New Chat":
+        new_title = generate_chat_title(content)
+        conversation.Title = new_title
+        db.add(conversation)
+
     db.commit()
 
 

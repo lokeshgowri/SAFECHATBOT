@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UploadCloud, CalendarCheck, Plus, X, Link as LinkIcon, HelpCircle
+  UploadCloud, CalendarCheck, Plus, X, Link as LinkIcon, HelpCircle, DollarSign
 } from 'lucide-react';
 
 const FacultyDashboard = () => {
@@ -9,6 +9,7 @@ const FacultyDashboard = () => {
   const [schedule, setSchedule] = useState([]);
   const [links, setLinks] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [salaries, setSalaries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals state
@@ -25,16 +26,18 @@ const FacultyDashboard = () => {
   const fetchData = async () => {
     try {
       const hdrs = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
-      const [mRes, sRes, lRes, qRes] = await Promise.all([
+      const [mRes, sRes, lRes, qRes, salRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/faculty/marks', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/faculty/schedule', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/faculty/links', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/faculty/quizzes', { headers: hdrs })
+        fetch('http://127.0.0.1:8000/faculty/quizzes', { headers: hdrs }),
+        fetch('http://127.0.0.1:8000/faculty/salary', { headers: hdrs })
       ]);
       if (mRes.ok) setMarks(await mRes.json());
       if (sRes.ok) setSchedule(await sRes.json());
       if (lRes.ok) setLinks(await lRes.json());
       if (qRes.ok) setQuizzes(await qRes.json());
+      if (salRes.ok) setSalaries(await salRes.json());
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -110,7 +113,8 @@ const FacultyDashboard = () => {
           { id: 'marks', label: 'Manage Grades' },
           { id: 'resources', label: 'Upload Notes' },
           { id: 'links', label: 'Reference Links' },
-          { id: 'quizzes', label: 'Schedule Quiz' }
+          { id: 'quizzes', label: 'Schedule Quiz' },
+          { id: 'salary', label: 'My Salary Log' }
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab ${activeTab === tab.id ? 'active' : ''}`}>{tab.label}</button>
         ))}
@@ -170,6 +174,19 @@ const FacultyDashboard = () => {
                     <thead><tr><th>Date Executable</th><th>Target Course Segment</th><th>Topic Constraints</th></tr></thead>
                     <tbody>{quizzes.map(q => <tr key={q.Id}><td style={{ fontWeight: '600', color: '#ec4899' }}>{q.Date}</td><td>{q.CourseName}</td><td>{q.Topics}</td></tr>)}</tbody>
                  </table>}
+               </div>
+             </div>
+          )}
+
+          {activeTab === 'salary' && (
+             <div className="panel">
+               <div className="panel-header"><h2><DollarSign width={18}/> Compensation History</h2></div>
+               <div className="table-container">
+                 {loading ? <p>Loading...</p> : <table>
+                    <thead><tr><th>Period (Month)</th><th>Gross Amount</th><th>Status</th><th>Disbursement Date</th></tr></thead>
+                    <tbody>{salaries.map(s => <tr key={s.Id}><td>{s.Month}</td><td style={{ fontWeight: '600' }}>${s.Amount.toLocaleString()}</td><td><span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', background: s.Status === 'Paid' ? '#dcfce7' : '#fef3c7', color: s.Status === 'Paid' ? '#166534' : '#b45309' }}>{s.Status}</span></td><td style={{ color: '#64748b' }}>{s.PaidAt ? new Date(s.PaidAt).toLocaleDateString() : 'N/A'}</td></tr>)}</tbody>
+                 </table>}
+                 {salaries.length === 0 && !loading && <p style={{ padding: '16px', color: '#64748b' }}>No salary records available.</p>}
                </div>
              </div>
           )}

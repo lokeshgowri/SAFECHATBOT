@@ -7,6 +7,7 @@ from app.models.resource import Resource
 from app.models.quiz import Quiz
 from app.models.quiz_attempt import QuizAttempt
 from app.models.academic import Mark, ClassSchedule, Announcement, AcademicDetail, StudentResult, FeeStructure, Holiday, ReferenceLink, QuizSchedule
+from app.models.financial import Payment, Salary
 
 # Expose models for easier imports and database initialization
-__all__ = ["User", "Conversation", "Message", "Student", "Faculty", "Resource", "Quiz", "QuizAttempt", "Mark", "ClassSchedule", "Announcement", "AcademicDetail", "StudentResult", "FeeStructure", "Holiday", "ReferenceLink", "QuizSchedule"]
+__all__ = ["User", "Conversation", "Message", "Student", "Faculty", "Resource", "Quiz", "QuizAttempt", "Mark", "ClassSchedule", "Announcement", "AcademicDetail", "StudentResult", "FeeStructure", "Holiday", "ReferenceLink", "QuizSchedule", "Payment", "Salary"]

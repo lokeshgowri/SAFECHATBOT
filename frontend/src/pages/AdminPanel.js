@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ShieldAlert, Database, UserPlus, Trash2, Edit, X, Bell, LayoutDashboard, FileText, DownloadCloud, Landmark, CalendarDays
+  ShieldAlert, Database, UserPlus, Trash2, Edit, X, Bell, FileText, DownloadCloud, Landmark, CalendarDays, DollarSign
 } from 'lucide-react';
 
 const AdminPanel = () => {
@@ -12,6 +12,8 @@ const AdminPanel = () => {
   const [results, setResults] = useState([]);
   const [fees, setFees] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [salaries, setSalaries] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -33,13 +35,15 @@ const AdminPanel = () => {
     setLoading(true);
     try {
       const hdrs = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
-      const [uRes, aRes, dRes, rRes, fRes, hRes] = await Promise.all([
+      const [uRes, aRes, dRes, rRes, fRes, hRes, pRes, sRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/admin/users', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/admin/announcements', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/admin/details', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/admin/results', { headers: hdrs }),
         fetch('http://127.0.0.1:8000/admin/fees', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/holidays', { headers: hdrs })
+        fetch('http://127.0.0.1:8000/admin/holidays', { headers: hdrs }),
+        fetch('http://127.0.0.1:8000/admin/payments', { headers: hdrs }),
+        fetch('http://127.0.0.1:8000/admin/salaries', { headers: hdrs })
       ]);
       if(uRes.ok) setUsersList(await uRes.json());
       if(aRes.ok) setAnnouncements(await aRes.json());
@@ -47,6 +51,8 @@ const AdminPanel = () => {
       if(rRes.ok) setResults(await rRes.json());
       if(fRes.ok) setFees(await fRes.json());
       if(hRes.ok) setHolidays(await hRes.json());
+      if(pRes.ok) setPayments(await pRes.json());
+      if(sRes.ok) setSalaries(await sRes.json());
     } catch (err) { console.error(err); } 
     finally { setLoading(false); }
   };
@@ -89,6 +95,17 @@ const AdminPanel = () => {
     try {
       const res = await fetch(`http://127.0.0.1:8000/admin/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
       if (res.ok) setUsersList(usersList.filter(u => u.UserId !== id));
+    } catch (err) {}
+  };
+
+  const handlePaySalary = async (id) => {
+    if (!window.confirm("Confirm salary payment?")) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/admin/salaries/${id}/pay`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) { fetchData(); }
     } catch (err) {}
   };
 
@@ -201,7 +218,8 @@ const AdminPanel = () => {
           { id: 'results', label: 'Upload Results', icon: <DownloadCloud width={16}/> },
           { id: 'fees', label: 'Fee Structures', icon: <Landmark width={16}/> },
           { id: 'announcements', label: 'Announcements', icon: <Bell width={16}/> },
-          { id: 'holidays', label: 'Holidays', icon: <CalendarDays width={16}/> }
+          { id: 'holidays', label: 'Holidays', icon: <CalendarDays width={16}/> },
+          { id: 'financials', label: 'Financials', icon: <DollarSign width={16}/> }
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab ${activeTab === tab.id ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {tab.icon} {tab.label}
@@ -273,6 +291,64 @@ const AdminPanel = () => {
                   <thead><tr><th>Designated Time</th><th>Holiday Reason</th></tr></thead>
                   <tbody>{holidays.map(h => <tr key={h.Id}><td style={{ fontWeight: '600', color: '#d97706' }}>{h.Date}</td><td>{h.Occasion}</td></tr>)}</tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'financials' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="panel">
+                <div className="panel-header"><h2>Student Payments Ledger</h2></div>
+                <div className="table-container">
+                  <table>
+                    <thead><tr><th>Payment ID</th><th>Student Name</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {payments.map(p => (
+                        <tr key={p.Id}>
+                          <td>#{p.Id}</td>
+                          <td>{p.StudentName}</td>
+                          <td>{p.Type}</td>
+                          <td style={{ fontWeight: '600' }}>${p.Amount.toLocaleString()}</td>
+                          <td>
+                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', background: p.Status === 'Paid' ? '#dcfce7' : '#fef3c7', color: p.Status === 'Paid' ? '#166534' : '#b45309' }}>
+                              {p.Status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-header"><h2>Faculty Salary Disbursement</h2></div>
+                <div className="table-container">
+                  <table>
+                    <thead><tr><th>Target Month</th><th>Faculty Name</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {salaries.map(s => (
+                        <tr key={s.Id}>
+                          <td>{s.Month}</td>
+                          <td>{s.FacultyName}</td>
+                          <td style={{ fontWeight: '600' }}>${s.Amount.toLocaleString()}</td>
+                          <td>
+                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', background: s.Status === 'Paid' ? '#dcfce7' : '#fef3c7', color: s.Status === 'Paid' ? '#166534' : '#b45309' }}>
+                              {s.Status}
+                            </span>
+                          </td>
+                          <td>
+                            {s.Status === 'Pending' ? (
+                              <button onClick={() => handlePaySalary(s.Id)} className="primary-btn" style={{ padding: '4px 12px', fontSize: '0.8rem', background: '#3b82f6' }}>Pay Salary</button>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Settled</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

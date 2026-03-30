@@ -79,16 +79,38 @@ const ChatPage = () => {
     setLoading(true);
 
     try {
+      let currentConvId = activeConversation?.ConversationId;
+
+      if (!currentConvId) {
+        const convRes = await fetch('http://127.0.0.1:8000/chatbot/conversations', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (convRes.ok) {
+          const newConv = await convRes.json();
+          currentConvId = newConv.ConversationId;
+          setActiveConversation(newConv);
+          setHistory(prev => [newConv, ...prev]);
+        }
+      }
+
       const response = await fetch('http://127.0.0.1:8000/chatbot/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ message: userMsg.text })
+        body: JSON.stringify({ conversationId: currentConvId, message: userMsg.text })
       });
 
       if (!response.ok) throw new Error('Failed to connect');
+
+      setHistory(prev => prev.map(h => {
+        if (h.ConversationId === currentConvId && (!h.Title || h.Title === "New Chat")) {
+          return { ...h, Title: userMsg.text.substring(0, 30) + (userMsg.text.length > 30 ? "..." : "") };
+        }
+        return h;
+      }));
 
       setMessages(prev => [...prev, { sender: 'bot', text: '' }]);
       
@@ -115,16 +137,49 @@ const ChatPage = () => {
     }
   };
 
-  const history = [
-    { title: "Library hours schedule", date: "Today" },
-    { title: "Semester marks inquiry", date: "Yesterday" },
-  ];
+  const [history, setHistory] = useState([]);
+  const [activeConversation, setActiveConversation] = useState(null);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/chatbot/conversations', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) setHistory(await res.json());
+    } catch (err) {}
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const handleNewChat = () => {
+    setActiveConversation(null);
+    setMessages([]);
+  };
+
+  const loadConversation = async (conversation) => {
+    setActiveConversation(conversation);
+    setMessages([]);
+    setLoading(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/chatbot/conversations/${conversation.ConversationId}/messages`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        const msgs = await res.json();
+        const mappedMsgs = msgs.map(m => ({ sender: m.sender === 'user' ? 'user' : 'bot', text: m.text }));
+        setMessages(mappedMsgs);
+      }
+    } catch (err) {}
+    setLoading(false);
+  };
 
   return (
     <div className="chat-layout">
       
       <div className="chat-sidebar">
-        <button className="new-chat-btn">
+        <button className="new-chat-btn" onClick={handleNewChat}>
           <Plus width={20} height={20} /> New Chat
         </button>
         
@@ -132,9 +187,9 @@ const ChatPage = () => {
           <div className="chat-history-label">Recent Chats</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {history.map((h, i) => (
-              <button key={i} className="history-item">
+              <button key={i} className={`history-item ${activeConversation?.ConversationId === h.ConversationId ? 'active' : ''}`} onClick={() => loadConversation(h)}>
                 <MessageSquare width={16} height={16} />
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.title}</span>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.Title || "New Chat"} {new Date(h.CreatedAt).toLocaleDateString()}</span>
               </button>
             ))}
           </div>

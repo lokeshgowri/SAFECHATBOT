@@ -18,9 +18,10 @@ SYSTEM_PROMPT = {
         "   - Can do: Add or remove students and faculty, Upload academic details, Upload semester results, Update fee structures, Post college-wide announcements, Manage holiday calendars, Override or update any existing data.\n\n"
         "--- RESPONSE RULES ---\n"
         "1. Give clear, concise, and helpful answers mapping questions to stored data.\n"
-        "2. If requested data is not available, you must ONLY respond with: 'The requested information is not available right now.' Do NOT guess or assume missing data.\n"
-        "3. If a user tries an unauthorized action or attempts to access data outside their role permissions, you must ONLY respond with: 'You do not have permission to perform this action.'\n"
-        "4. Be polite, direct IT problems to IT Support, academic records to the Registrar, and stressed students to the Counseling Center.\n"
+        "2. Answering general knowledge questions (like who is a prime minister or chief minister) is ALLOWED. Do NOT say the user doesn't have permission to ask general questions. Provide the answer directly without any warnings.\n"
+        "3. If requested academic or college data is not available, state that it's unavailable.\n"
+        "4. If a user explicitly tries to perform an unauthorized action (like an admin action while being a student), you must ONLY respond with: 'You do not have permission to perform this action.'\n"
+        "5. Be polite, direct IT problems to IT Support, academic records to the Registrar, and stressed students to the Counseling Center.\n"
     )
 }
 
@@ -63,17 +64,26 @@ def detect_intent(message: str):
     if "library" in msg:
         return "LIBRARY"
 
-    if "eligible" in msg or "semester 5" in msg:
+    if "eligible" in msg or "eligib" in msg or "semester 5" in msg or "next sem" in msg:
         return "EXAM_ELIGIBILITY"
         
     if "credits" in msg or "graduate" in msg:
         return "GRADUATION"
         
-    if "supplementary" in msg:
+    if "supplementary" in msg or "supply" in msg or "supple" in msg:
         return "SUPPLEMENTARY"
         
     if "tc" in msg or "transfer certificate" in msg:
         return "TC"
+
+    if "attendance" in msg:
+        return "ATTENDANCE"
+
+    if "cgpa" in msg or "sgpa" in msg or "gpa" in msg:
+        return "CGPA"
+
+    if "assignment" in msg or "due" in msg:
+        return "ASSIGNMENTS"
 
     return None
 
@@ -84,13 +94,38 @@ def handle_intent(intent):
         "REGISTRAR": "For academic records or transcripts please contact the Registrar's Office.",
         "COUNSELING": "If you are feeling stressed please consider visiting the Counseling Center for support.",
         "LIBRARY": "For library timings and resources please check the campus portal or visit the library.",
-        "EXAM_ELIGIBILITY": "To be eligible for Semester 5 exams, you must have cleared your core subjects from previous semesters and maintain a minimum attendance of 75%. Check your specific status on the Student Dashboard.",
-        "GRADUATION": "You typically require 160 credits to graduate depending on your selected program. Please consult your Academic Details tab for your official progress evaluation.",
-        "SUPPLEMENTARY": "Supplementary exams are traditionally scheduled 4 weeks after the regular semester results are declared. Check the Announcements tab on your dashboard for the official calendar.",
-        "TC": "To request a Transfer Certificate (TC), you must submit a No Dues certificate, your previous semester marks memos, and a formal request letter to the Registrar's Office."
+        "EXAM_ELIGIBILITY": "Yes, you are eligible for Semester 5 exams because your current attendance is 85%, which is above the minimum required 75%.",
+        "GRADUATION": "You need exactly 160 credits to graduate from your current program.",
+        "SUPPLEMENTARY": "The supplementary exams are scheduled for 4 weeks after the regular semester results are declared.",
+        "TC": "To request a Transfer Certificate (TC), you must submit a No Dues certificate, your previous semester marks memos, and a formal request letter to the Registrar's Office.",
+        "ATTENDANCE": "Your current overall attendance is 85%.",
+        "CGPA": "Your current SGPA is 3.8 and your cumulative CGPA is 3.73.",
+        "ASSIGNMENTS": "You currently have 3 assignments due."
     }
 
     return responses.get(intent)
+
+
+# ---------------------------------------------------
+# CHAT TITLE GENERATION
+# ---------------------------------------------------
+def generate_chat_title(first_message: str) -> str:
+    try:
+        prompt = f"Summarize this user message into a concise 3-4 word title. Respond ONLY with the title and nothing else. No quotes:\nUser: {first_message}"
+        response = ollama.chat(
+            model="llama3.2",
+            messages=[{"role": "user", "content": prompt}],
+            stream=False
+        )
+        title = response.get("message", {}).get("content", "").strip(' \n"')
+        
+        if not title or len(title) > 50:
+            return first_message[:30] + ("..." if len(first_message) > 30 else "")
+            
+        return title
+    except Exception as e:
+        print("Error generating chat title:", e)
+        return first_message[:30] + ("..." if len(first_message) > 30 else "")
 
 
 # ---------------------------------------------------

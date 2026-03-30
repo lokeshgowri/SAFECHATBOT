@@ -4,6 +4,10 @@ from app.core.security import get_db, get_current_user
 from app.models.user import User
 from pydantic import BaseModel
 from typing import List
+from app.models.financial import Payment, Salary
+from app.models.student import Student
+from app.models.faculty import Faculty
+from datetime import datetime
 
 router = APIRouter()
 
