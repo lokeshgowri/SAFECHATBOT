@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ShieldAlert, Database, UserPlus, Trash2, Edit, X, Bell, FileText, DownloadCloud, Landmark, CalendarDays, DollarSign
+  ShieldAlert, Database, UserPlus, Trash2, Edit, X, Bell, FileText, DownloadCloud, Landmark, CalendarDays, DollarSign, LayoutDashboard, CreditCard
 } from 'lucide-react';
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   const [usersList, setUsersList] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -213,6 +213,7 @@ const AdminPanel = () => {
 
       <div className="tabs-nav">
         {[
+          { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard width={16}/> },
           { id: 'users', label: 'User Directory', icon: <UserPlus width={16}/> },
           { id: 'academics', label: 'Academic Details', icon: <FileText width={16}/> },
           { id: 'results', label: 'Upload Results', icon: <DownloadCloud width={16}/> },
@@ -230,6 +231,66 @@ const AdminPanel = () => {
       <div className="grid-sections">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
+          {activeTab === 'dashboard' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              
+              <div className="panel">
+                <div className="panel-header"><h2><DollarSign width={20} height={20} style={{ color: '#f59e0b' }}/> Faculty Salaries Due Node</h2></div>
+                <div className="panel-body">
+                  {salaries.filter(s => s.Status === 'Pending').length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)' }}>All salaries have been paid.</p>
+                  ) : (
+                    salaries.filter(s => s.Status === 'Pending').map(s => (
+                      <div key={s.Id} className="list-item" style={{ borderLeft: '3px solid #f59e0b', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                          <div>
+                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{s.FacultyName}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Month: {s.Month}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ fontWeight: '700', color: '#0f172a' }}>${s.Amount}</div>
+                            <button 
+                               onClick={() => handlePaySalary(s.Id)}
+                               style={{ padding: '6px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '500', cursor: 'pointer', fontSize: '0.875rem' }}
+                            >Pay Salary</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-header"><h2><CreditCard width={20} height={20} style={{ color: '#ef4444' }}/> Outstanding Student Dues</h2></div>
+                <div className="panel-body">
+                  {payments.filter(p => p.Status === 'Pending').length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)' }}>No outstanding student dues.</p>
+                  ) : (
+                    payments.filter(p => p.Status === 'Pending').map(p => (
+                      <div key={p.Id} className="list-item" style={{ borderLeft: '3px solid #ef4444', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                          <div>
+                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{p.StudentName}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{p.Type}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ fontWeight: '700', color: '#0f172a' }}>${p.Amount}</div>
+                            <button 
+                               onClick={() => alert("Waiting for student payment via portal.")}
+                               style={{ padding: '6px 12px', background: '#f8fafc', color: '#94a3b8', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.875rem', cursor: 'not-allowed' }}
+                               disabled
+                            >Unpaid</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'users' && (
             <div className="panel">
               <div className="panel-header"><h2><Database width={20} height={20} style={{ color: '#94a3b8' }}/> Managed Access Directory</h2><button onClick={() => { setEditingUser(null); setFormData({FullName: '', Email: '', Role: 'student'}); setShowUserModal(true); }} className="primary-btn" style={{ background: '#eff6ff', color: '#2563eb' }}><UserPlus width={16}/> Insert User</button></div>

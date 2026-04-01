@@ -182,19 +182,48 @@ const StudentDashboard = () => {
       </div>
 
       <div className="grid-sections">
-        <div className="panel">
-          <div className="panel-header"><h2><Clock style={{ color: '#3b82f6', width: 20, height: 20 }}/> Today's Classes</h2></div>
-          <div className="panel-body">
-            {loading ? <p>Loading classes...</p> : overview.schedule.map((cls) => (
-              <div key={cls.ScheduleId} className="list-item">
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <div style={{ fontWeight: '600', color: 'var(--text-main)', width: '80px' }}>{cls.Time}</div>
-                  <div><div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{cls.CourseName}</div><div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{cls.Room}</div></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="panel">
+            <div className="panel-header"><h2><Clock style={{ color: '#3b82f6', width: 20, height: 20 }}/> Today's Classes</h2></div>
+            <div className="panel-body">
+              {loading ? <p>Loading classes...</p> : overview.schedule.map((cls) => (
+                <div key={cls.ScheduleId} className="list-item">
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div style={{ fontWeight: '600', color: 'var(--text-main)', width: '80px' }}>{cls.Time}</div>
+                    <div><div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{cls.CourseName}</div><div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{cls.Room}</div></div>
+                  </div>
+                  <span className="badge" style={{ backgroundColor: cls.Status === 'Canceled' ? '#fee2e2' : '#dcfce7', color: cls.Status === 'Canceled' ? '#991b1b' : '#166534' }}>{cls.Status}</span>
                 </div>
-                <span className="badge" style={{ backgroundColor: cls.Status === 'Canceled' ? '#fee2e2' : '#dcfce7', color: cls.Status === 'Canceled' ? '#991b1b' : '#166534' }}>{cls.Status}</span>
-              </div>
-            ))}
-            {!loading && overview.schedule.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No classes scheduled today.</p>}
+              ))}
+              {!loading && overview.schedule.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No classes scheduled today.</p>}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-header"><h2><CreditCard style={{ color: '#ef4444', width: 20, height: 20 }}/> Action Required: Pending Fees</h2></div>
+            <div className="panel-body">
+              {dues.filter(d => d.Status === 'Pending').length === 0 ? (
+                <p style={{ color: 'var(--text-muted)' }}>You have no pending fee dues.</p>
+              ) : (
+                dues.filter(d => d.Status === 'Pending').map(due => (
+                  <div key={due.Id} className="list-item" style={{ borderLeft: '3px solid #ef4444' }}>
+                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                       <div>
+                         <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{due.Type}</div>
+                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Due: {due.DueDate || 'N/A'}</div>
+                       </div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                         <div style={{ fontWeight: '700', color: '#0f172a' }}>${due.Amount}</div>
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); handlePayment(due.Id); }}
+                            style={{ padding: '6px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '500', cursor: 'pointer', fontSize: '0.875rem' }}
+                         >Pay Now</button>
+                       </div>
+                     </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

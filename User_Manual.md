@@ -27,6 +27,7 @@ The SAFECHATBOT platform combines an intelligent LLM-based query engine with ope
 
 **Dashboard Modules:**
 - **Academic Summary:** View your Cumulative CGPA, current Semester GPA, and Overall Attendance directly from the top widgets. Click the widgets to open detailed Modal breakdowns.
+- **Account Dropdown (New!):** Click the "Account" button in the top right navigation bar to view your specific profile details, including your full Name, Email, Major, Enrollment Year, and Current Semester.
 - **Schedule:** See your real-time classes for the day with live room assignments and status updates (On Time, Delayed, Canceled).
 - **Study Materials & Assignments:** Keep track of upcoming due assignments and access uploaded campus reference links and notes.
 - **Financial Dues (New!):** Click on the red **Fee Dues** widget to view any outstanding payments (e.g., Exam Fees, Tuition). You can simulate online payments securely from this portal by clicking **Pay Now**.
@@ -40,6 +41,7 @@ The SAFECHATBOT platform combines an intelligent LLM-based query engine with ope
 
 **Dashboard Modules:**
 - **Grade Management:** Assign and update Midterm and Final grades for students. These grades are instantly reflected in the student's CGPA calculations.
+- **Account Dropdown (New!):** Click the "Account" button in the top right navigation bar to view your profile details, including your Name, Email, Department, and Designation.
 - **Scheduling:** Create or update class schedules. If a class is delayed or canceled, update the status here to notify students immediately.
 - **Resource Processing:** Upload study materials (PDF, DOCX) through the RAG engine integration so the AI Chatbot can learn from your curriculum.
 - **Assessments:** Schedule quizzes and specify the topics covered so students can prepare.

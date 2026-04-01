@@ -31,6 +31,9 @@ def get_api_key(api_key: str = Depends(api_key_header)):
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
 
 from datetime import datetime, timedelta, timezone
 
