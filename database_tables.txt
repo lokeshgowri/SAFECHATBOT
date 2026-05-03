@@ -1,0 +1,96 @@
+=============================================================================
+SAFECHATBOT DATABASE TABLES OVERVIEW
+=============================================================================
+Implementation Type: Relational Database Models mapped via SQLAlchemy (Python ORM) connecting natively to Microsoft SQL Server Native Client / ODBC Driver 18.
+
+1. INDENTITY & CORE PROFILES
+-----------------------------------------------------------------------------
+Table Name: Users
+Description: Core authentication schema holding passwords and generic identities.
+Columns: UserId (int, PK), FullName (string), Email (string), PasswordHash (string), Role (string).
+
+Table Name: Students
+Description: Maps student-specific data via relational logic to the unique Email.
+Columns: StudentId (int, PK), Name (string), Email (string), Major (string), GPA (float), EnrollmentYear (int), CreatedAt (datetime).
+
+Table Name: Faculty
+Description: Maps faculty-specific data natively to the generic Users system.
+Columns: FacultyId (int, PK), Name (string), Email (string), Department (string), OfficeHours (string), RoomNumber (string), CreatedAt (datetime).
+
+
+2. ARTIFICIAL INTELLIGENCE & CHAT
+-----------------------------------------------------------------------------
+Table Name: Conversations
+Description: Tracks high-level chronological chat strings with the AI model.
+Columns: ConversationId (int, PK), UserId (int, FK), Title (string), CreatedAt (datetime).
+
+Table Name: Messages
+Description: Connects many messages (LLM & Human) identically to one Conversation.
+Columns: MessageId (int, PK), ConversationId (int, FK), Sender (string), Content (string), CreatedAt (datetime).
+
+
+3. ACADEMIC ORGANIZATION
+-----------------------------------------------------------------------------
+Table Name: Mark
+Description: Tracks grades universally based on standard assignment limits.
+Columns: MarkId (int, PK), UserId (int), Subject (string), MarksObtained (int), MaxMarks (int).
+
+Table Name: ClassSchedule
+Description: Allows mapping dynamic class durations uniquely mapped to Rooms.
+Columns: ScheduleId (int, PK), CourseName (string), Time (string), Room (string), Instructor (string), Status (string).
+
+Table Name: AcademicDetail
+Description: Broad curriculum explanations or course outlines.
+Columns: Id (int, PK), DetailType (string), Description (string).
+
+
+4. UNIVERSITY BROADCASTS
+-----------------------------------------------------------------------------
+Table Name: Announcement
+Description: Used natively across the top navbar dropdown as Global Alerts.
+Columns: AnnouncementId (int, PK), Title (string), Content (string), DatePosted (string).
+
+Table Name: Holiday
+Description: Dynamic representations of valid absences.
+Columns: Id (int, PK), Date (string), Occasion (string).
+
+
+5. FINANCIAL STRUCTURES
+-----------------------------------------------------------------------------
+Table Name: Payment
+Description: Stores individual unpaid and paid receipts mapping to identical students.
+Columns: Id (int, PK), StudentName (string), Type (string), Amount (int), Status (string [Pending/Paid]).
+
+Table Name: Salary
+Description: Separate ledger isolating direct deposits meant explicitly for professors.
+Columns: Id (int, PK), FacultyName (string), Month (string), Amount (int), Status (string [Pending/Paid]).
+
+Table Name: FeeStructure
+Description: Admin registry that establishes generic price thresholds.
+Columns: Id (int, PK), Program (string), Amount (int), Deadline (string).
+
+
+6. EXTERNAL ATTACHMENTS
+-----------------------------------------------------------------------------
+Table Name: StudentResult
+Description: Used by admins to publish generic PDF results. 
+Columns: Id (int, PK), Semester (string), LinkFormat (string).
+
+Table Name: ReferenceLink
+Description: Generic URL hosting.
+Columns: Id (int, PK), Description (string), Link (string).
+
+Table Name: QuizSchedule
+Description: Time-constrained logic for student calendar alerts.
+Columns: Id (int, PK), QuizTitle (string), DateTime (datetime).
+
+
+7. FACULTY ANALYTICS (QUIZ METRICS)
+-----------------------------------------------------------------------------
+Table Name: Quiz
+Description: Structural model grouping generic question topics.
+Columns: Id (int, PK), FacultyId (int), Title (string), Course (string), DueDate (datetime), CreatedAt (datetime).
+
+Table Name: QuizAttempt
+Description: Analyzes completion statuses algorithmically per distinct student.
+Columns: Id (int, PK), QuizId (int, FK), StudentId (int, FK), Score (float), Status (string), CompletedAt (datetime).

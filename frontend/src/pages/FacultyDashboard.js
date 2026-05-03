@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UploadCloud, CalendarCheck, Plus, X, Link as LinkIcon, HelpCircle, DollarSign
+  UploadCloud, CalendarCheck, Plus, X, Link as LinkIcon, HelpCircle, DollarSign, Edit, Trash2
 } from 'lucide-react';
 
 const FacultyDashboard = () => {
@@ -10,6 +10,8 @@ const FacultyDashboard = () => {
   const [links, setLinks] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [salaries, setSalaries] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals state
@@ -18,7 +20,7 @@ const FacultyDashboard = () => {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
 
-  const [markForm, setMarkForm] = useState({ StudentName: '', CourseName: '', Midterm: 0, Final: 0 });
+  const [markForm, setMarkForm] = useState({ StudentName: '', CourseName: '', Midterm: 0, Midterm2: 0, Final: 0 });
   const [classForm, setClassForm] = useState({ CourseName: '', Time: '', Room: '' });
   const [linkForm, setLinkForm] = useState({ Topic: '', Url: '' });
   const [quizForm, setQuizForm] = useState({ CourseName: '', Date: '', Topics: '' });
@@ -26,34 +28,56 @@ const FacultyDashboard = () => {
   const fetchData = async () => {
     try {
       const hdrs = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
-      const [mRes, sRes, lRes, qRes, salRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/faculty/marks', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/faculty/schedule', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/faculty/links', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/faculty/quizzes', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/faculty/salary', { headers: hdrs })
+      const [mRes, sRes, lRes, qRes, salRes, aRes, hRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/marks`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/schedule`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/links`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/quizzes`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/salary`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/announcements`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/faculty/holidays`, { headers: hdrs })
       ]);
       if (mRes.ok) setMarks(await mRes.json());
       if (sRes.ok) setSchedule(await sRes.json());
       if (lRes.ok) setLinks(await lRes.json());
       if (qRes.ok) setQuizzes(await qRes.json());
       if (salRes.ok) setSalaries(await salRes.json());
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+      if (aRes.ok) setAnnouncements(await aRes.json());
+      if (hRes.ok) setHolidays(await hRes.json());
+    } catch (err) {  } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
 
+  const handleDelete = async (endpoint, id) => {
+    if (!window.confirm("Delete this record?")) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/faculty/${endpoint}/${id}`, { 
+          method: 'DELETE', 
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } 
+      });
+      if (res.ok) fetchData(); else alert("Failed to delete.");
+    } catch(err){}
+  };
+
   const handlePost = async (e, endpoint, payload, setModalFalse, resetFormFn) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://127.0.0.1:8000/faculty/${endpoint}`, {
-        method: 'POST',
+      const editId = payload.MarkId || payload.ScheduleId || payload.Id || null;
+      const url = editId ? `http://127.0.0.1:8000/faculty/${endpoint}/${editId}` : `http://127.0.0.1:8000/faculty/${endpoint}`;
+      const method = editId ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       if (res.ok) { setModalFalse(false); resetFormFn(); fetchData(); } 
-      else alert("Failed to deploy changes.");
-    } catch (err) { console.error(err); }
+      else {
+          const errorData = await res.json();
+          alert(`Failed to deploy changes. Error: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (err) {  alert(`Network error: ${err.message}`); }
   };
 
   const updateScheduleStatus = async (scheduleId, status) => {
@@ -70,13 +94,13 @@ const FacultyDashboard = () => {
 
     try {
       alert("Indexing file in the background...");
-      await fetch('http://127.0.0.1:8000/upload/', {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/upload/`, {
         method: 'POST',
         body: formData
       });
       alert("File uploaded and AI RAG Indexed successfully!");
     } catch (error) {
-       console.error(error);
+       
        alert("Error uploading document to backend server.");
     }
   };
@@ -85,7 +109,7 @@ const FacultyDashboard = () => {
     <div className="page-container" style={{ position: 'relative' }}>
 
       {showMarkModal && (
-        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="panel" style={{ width: '400px', padding: '24px' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}><h2 style={{ margin: 0 }}>Add New Record</h2><button onClick={() => setShowMarkModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X width={20}/></button></div><form onSubmit={e => handlePost(e, 'marks', markForm, setShowMarkModal, () => setMarkForm({ StudentName: '', CourseName: '', Midterm: 0, Final: 0 }))} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}><div><label>Student Full Name</label><input required type="text" value={markForm.StudentName} onChange={e => setMarkForm({...markForm, StudentName: e.target.value})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><div><label>Course</label><input required type="text" value={markForm.CourseName} onChange={e => setMarkForm({...markForm, CourseName: e.target.value})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><button type="submit" className="primary-btn" style={{ justifyContent: 'center' }}>Save Record in DB</button></form></div></div>
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="panel" style={{ width: '400px', padding: '24px' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}><h2 style={{ margin: 0 }}>Add New Record</h2><button onClick={() => setShowMarkModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X width={20}/></button></div><form onSubmit={e => handlePost(e, 'marks', markForm, setShowMarkModal, () => setMarkForm({ StudentName: '', CourseName: '', Midterm: 0, Midterm2: 0, Final: 0 }))} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}><div><label>Student Full Name</label><input required type="text" value={markForm.StudentName} onChange={e => setMarkForm({...markForm, StudentName: e.target.value})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><div><label>Course</label><input required type="text" value={markForm.CourseName} onChange={e => setMarkForm({...markForm, CourseName: e.target.value})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><div><label>Midterm Grade</label><input required type="number" value={markForm.Midterm} onChange={e => setMarkForm({...markForm, Midterm: parseInt(e.target.value)})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><div><label>Midterm2 Grade</label><input required type="number" value={markForm.Midterm2} onChange={e => setMarkForm({...markForm, Midterm2: parseInt(e.target.value)})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><div><label>Final Grade</label><input required type="number" value={markForm.Final} onChange={e => setMarkForm({...markForm, Final: parseInt(e.target.value)})} className="input-field" style={{ width: '100%', boxSizing: 'border-box' }}/></div><button type="submit" className="primary-btn" style={{ justifyContent: 'center' }}>Save Record in DB</button></form></div></div>
       )}
 
       {showClassModal && (
@@ -128,10 +152,14 @@ const FacultyDashboard = () => {
               <div className="panel-header"><h2>Assign Grades</h2><button onClick={() => setShowMarkModal(true)} className="primary-btn" style={{ background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0' }}><Plus width={16} height={16} /> New Mark</button></div>
               <div className="table-container">
                 {loading ? <p>Loading...</p> : <table>
-                    <thead><tr><th>Student Name</th><th>Course</th><th>Midterm</th><th>Final</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Student Name</th><th>Course</th><th>Midterm</th><th>Midterm2</th><th>Final</th><th>Action</th></tr></thead>
                     <tbody>
                       {marks.map((mark) => (
-                        <tr key={mark.MarkId}><td style={{ fontWeight: '500' }}>{mark.StudentName}</td><td>{mark.CourseName}</td><td>{mark.Midterm}</td><td>{mark.Final}</td><td style={{ color: '#10b981' }}>Locked in SQL DB</td></tr>
+                        <tr key={mark.MarkId}><td style={{ fontWeight: '500' }}>{mark.StudentName}</td><td>{mark.CourseName}</td><td>{mark.Midterm}</td><td>{mark.Midterm2}</td><td>{mark.Final}</td>
+                        <td style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => { setMarkForm(mark); setShowMarkModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer' }}><Edit width={16}/></button>
+                          <button onClick={() => handleDelete('marks', mark.MarkId)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                        </td></tr>
                       ))}
                       {marks.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center' }}>No academic records found in DB. Add one above!</td></tr>}
                     </tbody>
@@ -159,8 +187,13 @@ const FacultyDashboard = () => {
                <div className="panel-header"><h2><LinkIcon width={18}/> Managed Curriculum Resources</h2><button onClick={() => setShowLinkModal(true)} className="primary-btn" style={{ background: '#8b5cf6' }}>Provision Link SQL Record</button></div>
                <div className="table-container">
                  {loading ? <p>Loading...</p> : <table>
-                    <thead><tr><th>Educational Topic Node</th><th>Hyperlink Target</th></tr></thead>
-                    <tbody>{links.map(l => <tr key={l.Id}><td style={{ fontWeight: '500' }}>{l.Topic}</td><td><a href={l.Url} target="_blank" rel="noreferrer" style={{ color: '#8b5cf6' }}>Navigate Source</a></td></tr>)}</tbody>
+                    <thead><tr><th>Educational Topic Node</th><th>Hyperlink Target</th><th>Actions</th></tr></thead>
+                    <tbody>{links.map(l => <tr key={l.Id}><td style={{ fontWeight: '500' }}>{l.Topic}</td><td><a href={l.Url} target="_blank" rel="noreferrer" style={{ color: '#8b5cf6' }}>Navigate Source</a></td>
+                    <td>
+                        <button onClick={() => { setLinkForm(l); setShowLinkModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer', marginRight: '8px' }}><Edit width={16}/></button>
+                        <button onClick={() => handleDelete('links', l.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                    </td>
+                    </tr>)}</tbody>
                  </table>}
                </div>
              </div>
@@ -171,8 +204,13 @@ const FacultyDashboard = () => {
                <div className="panel-header"><h2><HelpCircle width={18}/> Scheduled Assessments Protocol</h2><button onClick={() => setShowQuizModal(true)} className="primary-btn" style={{ background: '#ec4899' }}>Deploy Evaluation Window</button></div>
                <div className="table-container">
                  {loading ? <p>Loading...</p> : <table>
-                    <thead><tr><th>Date Executable</th><th>Target Course Segment</th><th>Topic Constraints</th></tr></thead>
-                    <tbody>{quizzes.map(q => <tr key={q.Id}><td style={{ fontWeight: '600', color: '#ec4899' }}>{q.Date}</td><td>{q.CourseName}</td><td>{q.Topics}</td></tr>)}</tbody>
+                    <thead><tr><th>Date Executable</th><th>Target Course Segment</th><th>Topic Constraints</th><th>Actions</th></tr></thead>
+                    <tbody>{quizzes.map(q => <tr key={q.Id}><td style={{ fontWeight: '600', color: '#ec4899' }}>{q.Date}</td><td>{q.CourseName}</td><td>{q.Topics}</td>
+                    <td>
+                        <button onClick={() => { setQuizForm(q); setShowQuizModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer', marginRight: '8px' }}><Edit width={16}/></button>
+                        <button onClick={() => handleDelete('quizzes', q.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                    </td>
+                    </tr>)}</tbody>
                  </table>}
                </div>
              </div>
@@ -201,14 +239,44 @@ const FacultyDashboard = () => {
             {loading ? <p>Loading...</p> : schedule.map(s => (
               <div key={s.ScheduleId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', marginBottom: '8px' }}>
                 <div><div style={{ fontWeight: '500', color: 'white' }}>{s.CourseName}</div><div style={{ fontSize: '0.75rem', color: '#93c5fd' }}>{s.Time} &middot; {s.Room}</div></div>
-                <select value={s.Status} onChange={e => updateScheduleStatus(s.ScheduleId, e.target.value)} style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.75rem', outline: 'none' }}>
-                  <option value="On Time">On Time</option>
-                  <option value="Canceled">Canceled</option>
-                  <option value="Delayed">Delayed</option>
-                </select>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select value={s.Status} onChange={e => updateScheduleStatus(s.ScheduleId, e.target.value)} style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.75rem', outline: 'none' }}>
+                    <option value="On Time">On Time</option>
+                    <option value="Canceled">Canceled</option>
+                    <option value="Delayed">Delayed</option>
+                  </select>
+                  <button onClick={() => { setClassForm(s); setShowClassModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer' }}><Edit width={16}/></button>
+                  <button onClick={() => handleDelete('schedule', s.ScheduleId)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                </div>
               </div>
             ))}
           </div>
+          
+          <div className="highlight-widget" style={{ background: 'var(--bg-sidebar)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 16px 0', fontSize: '1.125rem' }}>
+              University Announcements
+            </h3>
+            {announcements.length === 0 ? <p style={{ fontSize: '0.875rem', color: '#bfdbfe' }}>No announcements.</p> : announcements.map(a => (
+              <div key={a.AnnouncementId} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <p style={{ fontWeight: '600', color: 'white', margin: '0 0 4px 0' }}>{a.Title}</p>
+                <p style={{ fontSize: '0.875rem', color: '#bfdbfe', margin: '0 0 4px 0' }}>{a.Content}</p>
+                <small style={{ color: '#93c5fd' }}>{a.DatePosted}</small>
+              </div>
+            ))}
+          </div>
+
+          <div className="highlight-widget" style={{ background: 'var(--bg-sidebar)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 16px 0', fontSize: '1.125rem' }}>
+              Upcoming Holidays
+            </h3>
+            {holidays.length === 0 ? <p style={{ fontSize: '0.875rem', color: '#bfdbfe' }}>No holidays scheduled.</p> : holidays.map(h => (
+              <div key={h.Id} style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'white' }}>{h.Occasion}</span>
+                <span style={{ color: '#93c5fd' }}>{h.Date}</span>
+              </div>
+            ))}
+          </div>
+
         </div>
       </div>
     </div>

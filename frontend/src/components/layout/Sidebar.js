@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       return;
     }
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/change-password", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/auth/change-password`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -41,7 +41,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         alert(data.detail || "Failed to update password.");
       }
     } catch (err) {
-      console.error(err);
+      
       alert("An error occurred.");
     }
   };
@@ -51,17 +51,19 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       { name: "Chatbot AI", path: "/chat", icon: <MessageSquare className="w-5 h-5" /> },
     ];
 
-    if (role === "student") {
+    const normRole = role ? role.toLowerCase() : "";
+
+    if (normRole === "student") {
       return [
         { name: "Dashboard", path: "/student", icon: <LayoutDashboard className="w-5 h-5" /> },
         ...defaultItems
       ];
-    } else if (role === "faculty") {
+    } else if (normRole === "faculty") {
       return [
         { name: "Dashboard", path: "/faculty", icon: <LayoutDashboard className="w-5 h-5" /> },
         ...defaultItems
       ];
-    } else if (role === "admin") {
+    } else if (normRole === "admin") {
       return [
         { name: "Dashboard", path: "/admin", icon: <LayoutDashboard className="w-5 h-5" /> },
         ...defaultItems

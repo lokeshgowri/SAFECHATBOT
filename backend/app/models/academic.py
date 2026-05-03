@@ -5,10 +5,11 @@ class Mark(Base):
     __tablename__ = "Marks"
 
     MarkId = Column(Integer, primary_key=True, index=True)
-    StudentId = Column(Integer, ForeignKey("Students.StudentId", ondelete="CASCADE"))
+    StudentId = Column(Integer, ForeignKey("Students.StudentId", ondelete="CASCADE"), nullable=True)
     StudentName = Column(String)
     CourseName = Column(String)
     Midterm = Column(Float, default=0.0)
+    Midterm2 = Column(Float, default=0.0)
     Final = Column(Float, default=0.0)
 
 class ClassSchedule(Base):

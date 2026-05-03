@@ -14,7 +14,7 @@ const Login = () => {
     setErrorMsg("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/login", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -39,7 +39,7 @@ const Login = () => {
         window.location.replace("/student");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      
       setErrorMsg("Network error verifying parameters. Is the backend running?");
       setLoading(false);
     }

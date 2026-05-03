@@ -24,7 +24,7 @@ function Sidebar() {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8000/chatbot/conversations",
+        `${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/chatbot/conversations`,
         {
           method: "GET",
           headers: {
@@ -48,7 +48,7 @@ function Sidebar() {
       }
 
     } catch (error) {
-      console.error("Fetch error:", error);
+      
     }
 
   }, []);

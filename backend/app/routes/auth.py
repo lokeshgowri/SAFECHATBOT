@@ -32,14 +32,8 @@ class PasswordChangeRequest(BaseModel):
 @router.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
 
-    # Debug logs
-    print("EMAIL RECEIVED:", data.email)
-    print("PASSWORD RECEIVED:", data.password)
-
     # Find user
     user = db.query(User).filter(User.Email == data.email).first()
-
-    print("USER FROM DATABASE:", user)
 
     if not user:
         raise HTTPException(
@@ -49,8 +43,6 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
     # Verify password
     if not verify_password(data.password, user.PasswordHash):
-        print("PASSWORD HASH IN DATABASE:", user.PasswordHash)
-
         raise HTTPException(
             status_code=400,
             detail="Password incorrect"

@@ -4,12 +4,16 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
 
 from app.core.database import SessionLocal
 from app.models.user import User
 
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 API_KEY_NAME = "X-API-Key"
 VALID_API_KEYS = {
@@ -64,9 +68,6 @@ def get_current_user(
     db: Session = Depends(get_db)
 ):
 
-    print("AUTH HEADER:", credentials)
-    print("TOKEN RECEIVED:", credentials.credentials)
-
     token = credentials.credentials
 
     try:
@@ -74,8 +75,6 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
         email = payload.get("sub")
-
-        print("TOKEN EMAIL:", email)   # DEBUG LINE
 
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -85,8 +84,6 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Token invalid")
 
     user = db.query(User).filter(User.Email == email).first()
-
-    print("USER FOUND:", user)   # DEBUG LINE
 
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")

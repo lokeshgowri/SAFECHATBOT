@@ -13,11 +13,11 @@ const TopNavbar = ({ toggleSidebar }) => {
 
   const fetchAccountData = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/me", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/auth/me`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       if (res.ok) setAccountData(await res.json());
-    } catch (err) { console.error(err); }
+    } catch (err) {  }
   };
 
   const handleToggleAccount = () => {
@@ -30,13 +30,13 @@ const TopNavbar = ({ toggleSidebar }) => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/announcements", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/auth/announcements`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       if (res.ok) {
         setNotifications(await res.json());
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {  }
   };
 
   const handleToggleNotifications = () => {

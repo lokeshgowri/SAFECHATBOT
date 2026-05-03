@@ -47,7 +47,7 @@ const ChatPage = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/upload', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -82,7 +82,7 @@ const ChatPage = () => {
       let currentConvId = activeConversation?.ConversationId;
 
       if (!currentConvId) {
-        const convRes = await fetch('http://127.0.0.1:8000/chatbot/conversations', {
+        const convRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/chatbot/conversations`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
@@ -94,7 +94,7 @@ const ChatPage = () => {
         }
       }
 
-      const response = await fetch('http://127.0.0.1:8000/chatbot/message', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ const ChatPage = () => {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/chatbot/conversations', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/chatbot/conversations`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) setHistory(await res.json());

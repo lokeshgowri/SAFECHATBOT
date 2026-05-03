@@ -36,14 +36,14 @@ const AdminPanel = () => {
     try {
       const hdrs = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
       const [uRes, aRes, dRes, rRes, fRes, hRes, pRes, sRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/admin/users', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/announcements', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/details', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/results', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/fees', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/holidays', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/payments', { headers: hdrs }),
-        fetch('http://127.0.0.1:8000/admin/salaries', { headers: hdrs })
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/users`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/announcements`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/details`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/results`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/fees`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/holidays`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/payments`, { headers: hdrs }),
+        fetch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/admin/salaries`, { headers: hdrs })
       ]);
       if(uRes.ok) setUsersList(await uRes.json());
       if(aRes.ok) setAnnouncements(await aRes.json());
@@ -53,17 +53,32 @@ const AdminPanel = () => {
       if(hRes.ok) setHolidays(await hRes.json());
       if(pRes.ok) setPayments(await pRes.json());
       if(sRes.ok) setSalaries(await sRes.json());
-    } catch (err) { console.error(err); } 
+    } catch (err) {  } 
     finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
 
+  const handleDelete = async (endpoint, id) => {
+    if (!window.confirm("Delete this record?")) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/admin/${endpoint}/${id}`, { 
+          method: 'DELETE', 
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } 
+      });
+      if (res.ok) fetchData(); else alert("Failed to delete.");
+    } catch(err){}
+  };
+
   const handlePost = async (e, endpoint, payload, setModalFalse, resetFormFn) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://127.0.0.1:8000/admin/${endpoint}`, {
-        method: 'POST',
+      const editId = payload.Id || payload.AnnouncementId || null;
+      const url = editId ? `http://127.0.0.1:8000/admin/${endpoint}/${editId}` : `http://127.0.0.1:8000/admin/${endpoint}`;
+      const method = editId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -72,7 +87,7 @@ const AdminPanel = () => {
         resetFormFn();
         fetchData();
       } else alert("Failed to deploy changes.");
-    } catch (err) { console.error(err); }
+    } catch (err) {  }
   };
 
   const handleSaveUser = async (e) => {
@@ -87,7 +102,7 @@ const AdminPanel = () => {
       });
       if (res.ok) { fetchData(); setShowUserModal(false); } 
       else { const err = await res.json(); alert(`Error: ${err.detail}`); }
-    } catch (err) { console.error(err); }
+    } catch (err) {  }
   };
 
   const handleDeleteUser = async (id) => {
@@ -228,8 +243,7 @@ const AdminPanel = () => {
         ))}
       </div>
 
-      <div className="grid-sections">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {activeTab === 'dashboard' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -309,7 +323,13 @@ const AdminPanel = () => {
             <div className="panel">
               <div className="panel-header"><h2>Live Academic Schema Details</h2><button onClick={() => setShowDetailModal(true)} className="primary-btn" style={{ background: '#8b5cf6' }}>Compose Details</button></div>
               <div className="panel-body" style={{ padding: '24px' }}>
-                {details.map(d => <div key={d.Id} style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '12px' }}><h3 style={{ margin: '0 0 8px 0', color: '#8b5cf6' }}>{d.DetailType}</h3><p style={{ margin: 0, fontSize: '0.875rem' }}>{d.Description}</p></div>)}
+                {details.map(d => <div key={d.Id} style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div><h3 style={{ margin: '0 0 8px 0', color: '#8b5cf6' }}>{d.DetailType}</h3><p style={{ margin: 0, fontSize: '0.875rem' }}>{d.Description}</p></div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button onClick={() => { setDetailData(d); setShowDetailModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer' }}><Edit width={16}/></button>
+                    <button onClick={() => handleDelete('details', d.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                  </div>
+                </div>)}
               </div>
             </div>
           )}
@@ -318,7 +338,12 @@ const AdminPanel = () => {
             <div className="panel">
               <div className="panel-header"><h2>Official Result Manifests</h2><button onClick={() => setShowResultModal(true)} className="primary-btn" style={{ background: '#3b82f6' }}>Upload Results Document</button></div>
               <div className="panel-body" style={{ padding: '24px' }}>
-                {results.map(r => <div key={r.Id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #e2e8f0' }}><strong>{r.Semester} Exam Iteration</strong><a href={r.LinkFormat} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: '500' }}>View Records</a></div>)}
+                {results.map(r => <div key={r.Id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: '1px solid #e2e8f0' }}><div><strong>{r.Semester} Exam Iteration</strong><a href={r.LinkFormat} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#2563eb', fontWeight: '500' }}>View Records</a></div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => { setResultData(r); setShowResultModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer' }}><Edit width={16}/></button>
+                    <button onClick={() => handleDelete('results', r.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                  </div>
+                </div>)}
               </div>
             </div>
           )}
@@ -328,8 +353,13 @@ const AdminPanel = () => {
               <div className="panel-header"><h2>University Fee Registries</h2><button onClick={() => setShowFeeModal(true)} className="primary-btn" style={{ background: '#10b981' }}>Establish Price Structure</button></div>
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Program</th><th>Sum</th><th>Action Deadline</th></tr></thead>
-                  <tbody>{fees.map(f => <tr key={f.Id}><td>{f.Program}</td><td style={{ fontWeight: '600', color: '#059669' }}>${f.Amount.toLocaleString()}</td><td>{f.Deadline}</td></tr>)}</tbody>
+                  <thead><tr><th>Program</th><th>Sum</th><th>Action Deadline</th><th>Actions</th></tr></thead>
+                  <tbody>{fees.map(f => <tr key={f.Id}><td>{f.Program}</td><td style={{ fontWeight: '600', color: '#059669' }}>${f.Amount.toLocaleString()}</td><td>{f.Deadline}</td>
+                    <td>
+                        <button onClick={() => { setFeeData(f); setShowFeeModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer', marginRight: '8px' }}><Edit width={16}/></button>
+                        <button onClick={() => handleDelete('fees', f.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                    </td>
+                  </tr>)}</tbody>
                 </table>
               </div>
             </div>
@@ -339,7 +369,13 @@ const AdminPanel = () => {
              <div className="panel">
              <div className="panel-header"><h2>Active Global Transmissions</h2><button onClick={() => setShowAnnModal(true)} className="primary-btn" style={{ background: '#ec4899' }}>Deploy Urgent Network Broadcast</button></div>
              <div className="panel-body" style={{ padding: '24px' }}>
-               {announcements.map(a => <div key={a.AnnouncementId} style={{ background: 'rgba(236, 72, 153, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '12px', borderLeft: '4px solid #ec4899' }}><h3 style={{ margin: '0 0 8px 0', color: '#ec4899' }}>{a.Title}</h3><p style={{ margin: 0, fontSize: '0.875rem' }}>{a.Content}</p><small style={{ color: '#94a3b8', display: 'block', marginTop: '8px' }}>Deployed: {a.DatePosted}</small></div>)}
+               {announcements.map(a => <div key={a.AnnouncementId} style={{ background: 'rgba(236, 72, 153, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '12px', borderLeft: '4px solid #ec4899', display: 'flex', justifyContent: 'space-between' }}>
+                  <div><h3 style={{ margin: '0 0 8px 0', color: '#ec4899' }}>{a.Title}</h3><p style={{ margin: 0, fontSize: '0.875rem' }}>{a.Content}</p><small style={{ color: '#94a3b8', display: 'block', marginTop: '8px' }}>Deployed: {a.DatePosted}</small></div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button onClick={() => { setAnnData(a); setShowAnnModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer' }}><Edit width={16}/></button>
+                    <button onClick={() => handleDelete('announcements', a.AnnouncementId)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                  </div>
+                </div>)}
              </div>
            </div>
           )}
@@ -349,8 +385,13 @@ const AdminPanel = () => {
               <div className="panel-header"><h2>Official Calendar Exceptions</h2><button onClick={() => setShowHolidayModal(true)} className="primary-btn" style={{ background: '#f59e0b' }}>Set Holiday</button></div>
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Designated Time</th><th>Holiday Reason</th></tr></thead>
-                  <tbody>{holidays.map(h => <tr key={h.Id}><td style={{ fontWeight: '600', color: '#d97706' }}>{h.Date}</td><td>{h.Occasion}</td></tr>)}</tbody>
+                  <thead><tr><th>Designated Time</th><th>Holiday Reason</th><th>Actions</th></tr></thead>
+                  <tbody>{holidays.map(h => <tr key={h.Id}><td style={{ fontWeight: '600', color: '#d97706' }}>{h.Date}</td><td>{h.Occasion}</td>
+                    <td>
+                        <button onClick={() => { setHolidayData(h); setShowHolidayModal(true); }} style={{ background:'none', border:'none', color:'#3b82f6', cursor: 'pointer', marginRight: '8px' }}><Edit width={16}/></button>
+                        <button onClick={() => handleDelete('holidays', h.Id)} style={{ background:'none', border:'none', color:'#ef4444', cursor: 'pointer' }}><Trash2 width={16}/></button>
+                    </td>
+                  </tr>)}</tbody>
                 </table>
               </div>
             </div>
@@ -415,7 +456,6 @@ const AdminPanel = () => {
           )}
 
         </div>
-      </div>
     </div>
   );
 };

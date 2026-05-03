@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_db, get_current_user
 from app.models.user import User
 from app.models.student import Student
-from app.models.academic import Mark, ClassSchedule
+from app.models.academic import Mark, ClassSchedule, ReferenceLink, QuizSchedule, Announcement, AcademicDetail, StudentResult, FeeStructure, Holiday
 from app.models.financial import Payment
 from datetime import datetime
 
@@ -22,7 +22,7 @@ def get_student_overview(db: Session = Depends(get_db), user: User = Depends(get
     sgpa = 3.8
 
     if marks:
-        total = sum((m.Midterm + m.Final)/2 for m in marks)
+        total = sum((m.Midterm + m.Midterm2 + m.Final)/3 for m in marks)
         sgpa = round((total / len(marks)) / 20, 1)
 
     return {
@@ -31,7 +31,8 @@ def get_student_overview(db: Session = Depends(get_db), user: User = Depends(get
             {"label": "Current SGPA", "value": str(sgpa)},
             {"label": "Assignments Due", "value": str(assignments_due)}
         ],
-        "schedule": schedule
+        "schedule": schedule,
+        "marks": marks
     }
 
 
@@ -71,3 +72,61 @@ def pay_student_due(due_id: int, db: Session = Depends(get_db), user: User = Dep
     db.refresh(due)
     
     return {"message": "Payment successful", "due": due}
+
+import os
+
+@router.get("/materials")
+def get_study_materials(user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    uploads_dir = "uploads"
+    files = []
+    if os.path.exists(uploads_dir):
+        files = [f for f in os.listdir(uploads_dir) if f.endswith(('.pdf', '.docx', '.jpg', '.png', '.txt'))]
+        
+    return [{"filename": f} for f in files]
+
+@router.get("/links")
+def get_student_links(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    links = db.query(ReferenceLink).all()
+    return links
+
+@router.get("/quizzes")
+def get_student_quizzes(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    quizzes = db.query(QuizSchedule).all()
+    return quizzes
+
+@router.get("/announcements")
+def get_student_announcements(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(Announcement).all()
+
+@router.get("/details")
+def get_student_details(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(AcademicDetail).all()
+
+@router.get("/results")
+def get_student_results(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(StudentResult).all()
+
+@router.get("/fees")
+def get_student_fees(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(FeeStructure).all()
+
+@router.get("/holidays")
+def get_student_holidays(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.Role.lower() != "student":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(Holiday).all()

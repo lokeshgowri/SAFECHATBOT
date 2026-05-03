@@ -1,17 +1,34 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.security import get_current_user, get_db
+from app.core.database import SessionLocal
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.services.ai_engine import stream_ai, generate_chat_title
 
 
 router = APIRouter()
+
+def update_chat_title_bg(conversation_id: int, content: str):
+    db_session = SessionLocal()
+    try:
+        conversation = db_session.query(Conversation).filter(Conversation.ConversationId == conversation_id).first()
+        if conversation and conversation.Title == "New Chat":
+            new_title = generate_chat_title(content)
+            conversation.Title = new_title
+            db_session.commit()
+    except Exception as e:
+        logger.error(f"Error generating background chat title: {e}")
+    finally:
+        db_session.close()
 
 
 # =========================
@@ -94,6 +111,7 @@ def get_conversation_messages(
 @router.post("/message")
 async def send_message(
     data: ChatRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
@@ -137,23 +155,23 @@ async def send_message(
 
     db.add(user_msg)
     
-    # Update conversation title if it's currently "New Chat"
+    # Update conversation title in the background if it's "New Chat"
     conversation = db.query(Conversation).filter(Conversation.ConversationId == conversation_id).first()
     if conversation and conversation.Title == "New Chat":
-        new_title = generate_chat_title(content)
-        conversation.Title = new_title
-        db.add(conversation)
-
-    db.commit()
+        background_tasks.add_task(update_chat_title_bg, conversation_id, content)
 
 
-    # Load conversation history
-    history = (
+    # Load conversation history, limiting to last 10 messages to prevent context window overflow
+    history_query = (
         db.query(Message)
         .filter(Message.ConversationId == conversation_id)
-        .order_by(Message.CreatedAt)
+        .order_by(Message.CreatedAt.desc())
+        .limit(10)
         .all()
     )
+    
+    # Reverse to maintain chronological order
+    history = list(reversed(history_query))
 
 
     messages = []
@@ -169,25 +187,26 @@ async def send_message(
 
 
     async def generate():
-
         full_reply = ""
+        try:
+            for token in stream_ai(messages, user_name=user.FullName, user_role=user.Role, user_email=user.Email, db=db):
+                full_reply += token
+                yield token
 
-        for token in stream_ai(messages, user_name=user.FullName, user_role=user.Role):
-
-            full_reply += token
-            yield token
-
-
-        # Save AI reply
-        ai_msg = Message(
-            ConversationId=conversation_id,
-            Sender="ai",
-            Content=full_reply,
-            CreatedAt=datetime.utcnow()
-        )
-
-        db.add(ai_msg)
-        db.commit()
+            # Save AI reply
+            if full_reply:
+                ai_msg = Message(
+                    ConversationId=conversation_id,
+                    Sender="ai",
+                    Content=full_reply,
+                    CreatedAt=datetime.utcnow()
+                )
+                db.add(ai_msg)
+                db.commit()
+        except Exception as e:
+            logger.error(f"AI Stream Error: {e}")
+            error_msg = f"Sorry, there was an issue communicating with the AI model. Ensure Ollama is running correctly. Error: {e}"
+            yield error_msg
 
 
     return StreamingResponse(generate(), media_type="text/plain")

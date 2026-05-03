@@ -1,0 +1,221 @@
+=========================================================
+SAFECHATBOT: END-TO-END PROJECT DOCUMENTATION
+=========================================================
+
+1. PROJECT OVERVIEW
+---------------------------------------------------------
+SAFECHATBOT is a comprehensive College Management System integrated with an advanced AI Chatbot. The platform handles traditional university operations—such as attendance tracking, CGPA management, dynamic class scheduling, user fee dues, and faculty salary disbursement—while supplementing these features with a RAG-powered (Retrieval-Augmented Generation) Chatbot. The chatbot allows students and faculty to query curricula, university rules, and uploaded lecture materials using natural language.
+
+The application serves three distinct roles:
+1. Students: View attendance, calculate CGPA, track assignments, safely pay outstanding tuition/exam dues, and chat with the AI for assistance.
+2. Faculty: View academic schedules, track performance analytics, check disbursed salaries, and upload class materials.
+3. Administrators: Manage user directories, post global announcements, dictate fee structures, pay salaries, and update dynamic system data.
+
+
+2. TECHNOLOGY STACK
+---------------------------------------------------------
+- Frontend: React.js, React Router DOM, Lucide-React (Icons), Vanilla CSS for custom visual elements.
+- Backend Core: Python 3.12, FastAPI, Uvicorn, Pydantic.
+- Database & ORM: SQLAlchemy, Microsoft SQL Server (via pyodbc).
+- AI & NLP Ecosystem: Ollama (llama 3.2 local LLM inferencing), LangChain, SentenceTransformers, FAISS-CPU (for vector embeddings), PyMuPDF / docx2txt (for file parsing).
+- Security: passlib + bcrypt (Password Hashing), Python-Jose (JWT authentication tokens).
+
+
+3. DIRECTORY STRUCTURE & CODE FUNCTIONALITY
+---------------------------------------------------------
+
+------------------------
+[A] BACKEND (/backend/)
+------------------------
+The backend works strictly over a modular FastAPI structure handling REST API endpoints.
+
+> /backend/app/main.py
+The project's entry point. Bootstraps the FastAPI server, adds CORS middleware allowing React to interface with it, and maps routing paths (e.g., `/auth`, `/student`, `/chatbot`) by importing specific Router modules.
+
+> /backend/app/core/
+Handles infrastructural setups.
+  - database.py: Configures the SQLAlchemy SQL Server engine and manages SessionLocal threads.
+  - security.py: Implements JWT Token generation, validates existing tokens via Fastapi Depends blocks, encrypts passwords using `bcrypt`, and fetches user context details.
+
+> /backend/app/models/
+SQLAlchemy definitions mapping Python classes to SQL Server Tables.
+  - user.py: Base User login system (`Users`).
+  - student.py: Maps tracking data like Major, GPA, and Enrollment Year (`Students`).
+  - faculty.py: Maps Department and Roles for staff (`Faculty`).
+  - academic.py: Huge umbrella for schema instances like `Mark`, `Holiday`, `Announcement`, `ClassSchedule` and `FeeStructure`.
+  - conversation.py / message.py: Models for storing the persistent Chatting history between Users and the AI.
+  - financial.py: Models for `Payment` (Student amounts owed) and `Salary` (Faculty paychecks).
+
+> /backend/app/routes/
+The Controllers dictating endpoint behavior.
+  - auth.py: Defines POST `/login` and PUT `/change-password`. Includes GET `/me` which matches standard User tokens to their Student/Faculty model relations.
+  - chatbot.py: Defines POST `/message`. Intercepts user inputs, requests vector searches across the FAISS database, constructs contextual LLM prompts, and returns AI replies while persisting the chat to SQL.
+  - student.py / faculty.py / admin.py: Role-specific portals delivering customized analytics and tables, such as fetching pending fee structures or dispatching salaries.
+  - upload.py: Serves faculty/admin file ingestions. Splits PDF/Docx files mathematically using Langchain text-splitters, computes high-dimensional embeddings, and dumps them natively into `faiss_index`.
+
+> /backend/app/services/
+The functional heavy lifting.
+  - ai_engine.py: Houses the exact logic connecting to the offline Ollama service. Generates answers using `ollama.generate()` and creates concise semantic titles via the `generate_chat_title()` function.
+  - nlp_engine.py: Localized lightweight AI routing. Employs `sentence-transformers` resolving generic queries to exact database tables efficiently without wasting LLM compute.
+  - document_processor.py: Controls PyPDF parsing structures reading raw bytes mapped into string vectors.
+
+
+------------------------
+[B] FRONTEND (/frontend/)
+------------------------
+The UI is a React Single Page Application tracking state via custom contexts.
+
+> /frontend/src/App.js
+Controls dynamic logic via React-Router. Restricts unauthorized endpoints via PrivateRoute wrappers and forces authentications. 
+
+> /frontend/src/AuthContext.js
+Globally tracks security states (e.g. `role`, `token`, `userId`) preventing prop-drilling.
+
+> /frontend/src/components/layout/
+  - Sidebar.js: The adaptive left-hand menu. Morphs contextually based on the active session role. Natively hosts an Account Settings modal relying on `/auth/change-password`.
+  - TopNavbar.js: Persistent header hosting a RAG File Query search bar. Features native dropdowns dynamically capturing `GET /auth/me` to read Role specific profile metadata, and grabs `/auth/announcements` acting as a global Notification Hub.
+
+> /frontend/src/pages/
+  - Auth.js: The interactive login/signup split screen mapping credentials natively to the FASTApi Auth system.
+  - ChatPage.js: Renders the Chatbot AI screen. Features dynamic typing indicators, historical tracking logic, and distinct user vs generic AI chat bubbles formatting Markdown code natively.
+  - StudentDashboard.js: A robust UI grid dynamically showing "Today's Classes", outstanding `Action Required: Pending Fees`, and deep analytics via active Modal structures (Attendance grids and SGPA tables).
+  - AdminPanel.js: Complex administrative overview. Contains a default `dashboard` view allowing the Admin to natively pay faculty salaries (`handlePaySalary`) or audit outstanding student dues. Other tabs include University Fee Registration and Account Management.
+  - FacultyDashboard.js: A segmented workspace splitting generic scheduling parameters and AI Chatbot Analytics allowing teachers to check generic question occurrences originating from generic students.
+
+
+4. END TO END FLOW EXAMPLES:
+---------------------------------------------------------
+[Student Payment Flow]
+1. Student clicks TopNavbar or views their dashboard natively seeing a "Action Required" fee.
+2. Clicking "Pay Now" fires React's `fetch(POST /student/dues/{id}/pay)`.
+3. FASTApi intercepts it checking if `Depends(get_current_user)` has a student role.
+4. Updates Microsoft SQL Server model `Payment` field `Status` to 'Paid'.
+5. React uses `useEffect` to instantly remount the `Paid` UI state as green.
+
+[AI RAG Question Flow (Chatbot)]
+1. Faculty uploads a syllabus docx file via `AdminPanel.js->Upload Results`.
+2. `upload.py` intercepts the file, reads it via `document_processor.py`, chunks text into 500-word blocks.
+3. Langchain converts chunk text into mathematical vectors via local HuggingFace embeddings running offline.
+4. Saved via `FAISS` library into an index map stored in `/backend`.
+5. Student asks "What is the grading policy?" on `ChatPage.js`.
+6. `/chatbot/message` detects query intents via `nlp_engine.py`, searches the `FAISS` index finding the syllabus chunk uploaded by faculty.
+7. Packages the textual Context alongside the Question natively sending it to LLaMA 3.2 via `ai_engine.py`.
+8. LLaMA returns the precise markdown answer, which the backend routes natively back to the Student's screen via FastAPI HTTP response.
+
+
+5. API ENDPOINTS OVERVIEW
+---------------------------------------------------------
+The application exposes a fully RESTful architecture via FastAPI:
+- /auth/login (POST): Validates credentials, issues JWT token.
+- /auth/me (GET): Returns role-dependent profile details (Name, Semester, Designation).
+- /auth/change-password (PUT): Verifies strict `bcrypt` hashes to update user passwords.
+- /auth/announcements (GET): Fetches global notification broadcasts for the frontend dropdown.
+- /chatbot/message (POST): Accepts user prompts and processes AI queries.
+- /admin/users (GET, POST, PUT, DELETE): Full CRUD lifecycle for maintaining platform identities.
+- /admin/salaries/{id}/pay (POST): Executes financial paycheck distribution.
+- /student/dues/{id}/pay (POST): Natively allows students to clear pending exam/tuition fees.
+
+
+6. DATABASE RELATIONSHIPS & SCHEMA DETAILS
+---------------------------------------------------------
+The project strictly employs relational SQL Server designs. Here are the core relationship constraints:
+- Unified Identity: The `Users` table acts as the nexus. The `Students` and `Faculty` tables do *not* duplicate login logic. Instead, they link to profiles via the unique `Email` identifier.
+- Conversational Memory: The `Conversation` table stores an AI-generated Title (e.g. "Fee Dues Discussion") uniquely bound to a `UserId`. The `Message` table possesses a many-to-one foreign key (`ConversationId`) allowing the UI to reconstruct long, historical discussion threads chronologically.
+- Financial Isolation: The `Payment` ledger structurally isolates student tuition records natively from the `Salary` ledger for operational compliance.
+
+
+7. ALGORITHMIC SECURITY & AUTHENTICATION 
+---------------------------------------------------------
+- Passwords are never sent natively nor saved in plaintext. During POST `/login`, the Python `passlib` module processes `bcrypt` decryption. 
+- Fastapi's `Depends(get_current_user)` middleware rigorously intercepts every single authorized endpoint. It rips apart the `Bearer` token using the `python-jose` JSON Web Signature integration. If a JWT token expires, or the client fabricates a signature, a 401 Unauthorized stack trace gracefully rejects the connection before the SQL Database is touched.
+
+
+8. ENVIRONMENT SETUP & DEPLOYMENT INSTRUCTIONS
+---------------------------------------------------------
+To run this project locally from scratch:
+
+DEPENDENCIES:
+1. Ensure Node.js and NPM are installed for the React Frontend.
+2. Ensure Python 3.10+ is installed for the FastAPI Backend.
+3. Keep an instance of Ollama running locally in the background on port 11434 with `llama3.2` pulled.
+
+BACKEND DEPLOYMENT:
+$ cd backend
+$ pip install -r requirements.txt
+$ uvicorn app.main:app --reload
+
+FRONTEND DEPLOYMENT:
+$ cd frontend
+$ npm install
+$ npm start
+
+The React platform natively launches on `http://localhost:3000` while proxying strict logic chains natively to `http://127.0.0.1:8000`.
+
+
+9. ENVIRONMENT VARIABLES (.env)
+---------------------------------------------------------
+For the backend to execute properly, ensure that a secure `.env` configuration file exists to safely abstract hardcoded secrets. 
+Required key-value pairs include:
+- `DB_CONNECTION_STRING` = (The raw SQLAlchemy ODBC connection string pointing to the SQL Server).
+- `SECRET_KEY` = (A secure randomized integer/string used by Python-Jose to sign JWT validations).
+- `ALGORITHM` = (Set natively to "HS256").
+- `ACCESS_TOKEN_EXPIRE_MINUTES` = (e.g., 1440 for 24-hour persistent logins).
+
+
+10. FUTURE SCALABILITY & ROADMAP
+---------------------------------------------------------
+Currently, SAFECHATBOT is a robust Minimum Viable Product (MVP). Future architectural enhancements could include:
+- Dockerization: Writing `Dockerfile` and `docker-compose.yml` wrappers to spin up the SQL Database, FastAPI, and React simultaneously in isolated containers.
+- Visual Analytics: Integrating `Recharts` or `Chart.js` into the Faculty and Admin dashboards to replace raw ledger tables with dynamic line charts analyzing student grade curves and server usage.
+- WebSockets: Upgrading the `/chatbot/message` REST API to a `ws://` WebSocket. This would allow fluid, real-time streaming of LLM tokens back to the UI (generating text word-by-word) rather than waiting for the entire block to finish rendering.
+- Payment Gateways: Replacing the mocked internal "Status Update" endpoints with authenticated Stripe API or Razorpay hooks for verifiable real-world transactions.
+
+
+11. SYSTEM VISUAL DIAGRAMS
+---------------------------------------------------------
+The following diagrams utilize `Mermaid.js` syntax. If pasted into a markdown viewer (like GitHub or VS Code), they will render fully structural flowcharts.
+
+[A] DEPLOYMENT DIAGRAM
+```mermaid
+graph TD
+    subgraph Client Tier
+        UserBrowser[Web Browser]
+        ReactApp[React SPA Frontend\nlocalhost:3000]
+    end
+
+    subgraph Application Tier
+        FastAPI[FastAPI Backend\nUvicorn localhost:8000]
+        Depend[JWT Security Middlewares]
+        Ollama[Ollama Inference Server\nlocalhost:11434]
+    end
+
+    subgraph Data Tier
+        SQLServer[(SQL Server Database\nSQLEXPRESS)]
+        FAISS[(FAISS Vector File DB)]
+    end
+
+    UserBrowser -->|HTTP Requests| ReactApp
+    ReactApp -->|REST API Calls| FastAPI
+    FastAPI -->|Extracts Roles| Depend
+    FastAPI -->|Query Vector Indexes| FAISS
+    FastAPI -->|Pass Context to LLM| Ollama
+    FastAPI -->|CRUD Operations| SQLServer
+```
+
+[B] ACTIVITY DIAGRAM (AI Chat Query Workflow)
+```mermaid
+stateDiagram-v2
+    [*] --> Start
+    Start --> CheckAuth: User sends Prompt via React UI
+    CheckAuth --> Unauthorized: Token Invalid / Expired
+    Unauthorized --> [*]: Return HTTP 401 Error
+    CheckAuth --> ClassifyIntent: Token Authenticated
+    ClassifyIntent --> FAISSRetrieval: Intent = "University Data"
+    ClassifyIntent --> GeneralLLM: Intent = "General AI Chat"
+    FAISSRetrieval --> PromptConstruction: Retrieve Chunks
+    GeneralLLM --> PromptConstruction: Direct Prompt
+    PromptConstruction --> GenerateResponse: Run Application / Ollama
+    GenerateResponse --> SaveDatabase: Log Message via SQLAlchemy
+    SaveDatabase --> ReturnResponse: Fire JSON to Frontend
+    ReturnResponse --> [*]
+```
